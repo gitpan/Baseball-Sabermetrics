@@ -8,25 +8,20 @@ use base qw/ Baseball::Sabermetrics::Team /;
 
 =head1 NAME
 
-Sabermetrics - a baseball statistic module
-
-=head1 VERSION
-
-Version 0.01
+Baseball::Sabermetrics - A Baseball Statistics Module
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.01_01';
 
 =head1 SYNOPSIS
 
-Sabermetrics provides an easy interface for calculating baseball statistics, given a data importer.  In this package, I've writen CPBL.pm for (L<Chinese Professional Baseball League>).
+Baseball::Sabermetrics provides an easy interface for calculating baseball statistics, given a data importer.  In this package, I've writen CPBL.pm for (I<Chinese Professional Baseball League>, L<http://www.cpbl.com.tw>).
 
   use Baseball::Sabermetrics;
   use Baseball::Sabermetrics::CPBL;
 
   my $league = Baseball::Sabermetrics->new(league => 'CPBL');
-
 
   # Actually these are predefined.
   # Those data with 'p_' or '_allowed' here are for seperating pitchers
@@ -46,7 +41,9 @@ Sabermetrics provides an easy interface for calculating baseball statistics, giv
       ...
   );
 
-  Some formulas can be applied to players, teams, and league, depend on what columns are used in the formula.  For example, ab and obp are defined for players, teams, and league, so that rc is available for all of them.
+  # Some formulas can be applied to players, teams, and league, depend on what
+  # columns are used in the formula.  For example, ab and obp are defined for
+  # players, teams, and league, so that rc is available for all of them.
 
   # top 5 obp of teams
   $_->print qw/ team name ba obp slg isop / for $league->top('teams', 5, 'obp');
@@ -66,7 +63,7 @@ Sabermetrics provides an easy interface for calculating baseball statistics, giv
 
 =head1 Data Structure
 
-Sabermetrics is aimed for providing a base class of your interested teams (a league, for example).  You'll need to provide a data retriever to pull data out.  The following example shows how you have to fill data into this structure.
+Baseball::Sabermetrics is aimed for providing a base class of your interested teams (a league, for example).  You'll need to provide a data retriever to pull data out.  The following example shows how you have to fill data into this structure.
 
  $league = {
     teams => {
@@ -94,7 +91,7 @@ Sabermetrics is aimed for providing a base class of your interested teams (a lea
 
 Create sabermetric data set of a group of teams.
 
-If $hash{Accumulate} is false, players data will not be accumulated to their teams and the league (and therefore team-wise and league-wise statistics are not allowed).
+If $hash{Accumulate} is false, players data will not be accumulated to their teams and the league (and therefore team-wise and league-wise statistics are not allowed).  Default is to accumulate stats.
 
 =cut
 
@@ -176,7 +173,9 @@ sub setup_common_info
 
 =item players([$name])
 
-If $name is given, return that player of type Sabermetrics::Player.  Otherwise, returns all players.
+    for ($league->players) { ... }
+
+    print $league->players('Someone')->obp;
 
 =cut
 
@@ -192,7 +191,9 @@ sub players
 
 =item teams([$name])
 
-If $name is given, return that team of type Sabermetrics::Team.  Otherwise, returns all teams.
+    for ($league->teams) { ... }
+
+    print $league->teams('Someone')->win;
 
 =cut
 
@@ -227,7 +228,7 @@ Victor Hsieh, C<< <victor at cpan.org> >>
 
 Please report any bugs or feature requests to
 C<bug-sabermetrics at rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Sabermetrics>.
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=BaseBall-Sabermetrics>.
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
 
@@ -235,7 +236,7 @@ your bug as I make changes.
 
 You can find documentation for this module with the perldoc command.
 
-    perldoc Sabermetrics
+    perldoc Baseball::Sabermetrics
 
 You can also look for information at:
 
@@ -243,23 +244,21 @@ You can also look for information at:
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
-L<http://annocpan.org/dist/Sabermetrics>
+L<http://annocpan.org/dist/Baseball-Sabermetrics>
 
 =item * CPAN Ratings
 
-L<http://cpanratings.perl.org/d/Sabermetrics>
+L<http://cpanratings.perl.org/d/Baseball-Sabermetrics>
 
 =item * RT: CPAN's request tracker
 
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Sabermetrics>
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Baseball-Sabermetrics>
 
 =item * Search CPAN
 
-L<http://search.cpan.org/dist/Sabermetrics>
+L<http://search.cpan.org/dist/Baseball-Sabermetrics>
 
 =back
-
-=head1 ACKNOWLEDGEMENTS
 
 =head1 COPYRIGHT & LICENSE
 
