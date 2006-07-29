@@ -104,7 +104,7 @@ struct Player {
     short _np, np;
     short _p_pa, p_pa;
     short _h_allowed, h_allowed;
-    short _r_allowed, r_allowed;
+    short _r_allowed, ra;
     short _setup, setup;
     short _hr_allowed, hr_allowed;
     short _p_bb, p_bb;

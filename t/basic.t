@@ -29,6 +29,15 @@ my $league = Baseball::Sabermetrics->new(data => {
 		}
 	    }
 	},
+	faketeam => {
+	    players => {
+		'batter1' => { pa => 100, ab => 80, h => 25, so => 18, bb => 18, hbp => 1, sf => 1, tb => 40, },
+		'batter2' => { pa => 100, ab => 85, h => 20, so => 8, bb => 20, hbp => 2, sf => 3, tb => 40, },
+		'batter3' => { pa => 100, ab => 75, h => 20, so => 20, bb => 15, hbp => 2, sf => 1, tb => 30, },
+		'batter4' => { pa => 100, ab => 85, h => 22, so => 10, bb => 10, hbp => 2, sf => 3, tb => 40, },
+		'batter5' => { pa => 100, ab => 87, h => 24, so => 15, bb => 20, hbp => 1, sf => 0, tb => 45, },
+	    }
+	}
     },
 });
 
@@ -48,6 +57,13 @@ is(round($w->wpct, 3), 0.615, 'WPCT');
 is(round($w->k_bb, 2), 1.47, 'K/BB');
 is(round($w->k_9, 2), 3.64, 'K/9');
 is(round($w->bb_9, 2), 2.48, 'BB/9');
+
+my $ft = $league->teams('faketeam');
+$ft->report_batters(qw/ name ba obp slg isop /);
+is(($ft->top('players', 1, 'ba'))[0]->name, 'batter1', 'top BA');
+is(($ft->top('players', 1, 'obp'))[0]->name, 'batter5', 'top OBP');
+is(($ft->top('players', 1, 'slg'))[0]->name, 'batter5', 'top SLG');
+is(($ft->top('players', 1, 'isop'))[0]->name, 'batter5', 'top ISOP');
 
 sub round
 {

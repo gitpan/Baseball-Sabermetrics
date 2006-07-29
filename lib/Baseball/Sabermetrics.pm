@@ -12,11 +12,11 @@ Baseball::Sabermetrics - A Baseball Statistics Module
 
 =cut
 
-our $VERSION = '0.01_01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
-Baseball::Sabermetrics provides an easy interface for calculating baseball statistics, given a data importer.  In this package, I've writen CPBL.pm for (I<Chinese Professional Baseball League>, L<http://www.cpbl.com.tw>).
+Baseball::Sabermetrics provides an easy interface for calculating baseball statistics, given a data importer.  In this package, I've written CPBL.pm for (I<Chinese Professional Baseball League>, L<http://www.cpbl.com.tw>).
 
   use Baseball::Sabermetrics;
   use Baseball::Sabermetrics::CPBL;
@@ -58,6 +58,10 @@ Baseball::Sabermetrics provides an easy interface for calculating baseball stati
   # show team statistics data (accumulated from players')
   $league->{Yankees}->print qw/ win lose ip so bb whip go_ao /;
 
+  # give a brief report for pitchers/batters of the team
+  $league->{Yankees}->report_pitchers qw/ name ip p_so p_bb whip go_ab /;
+  $league->{Yankees}->report_batters  qw/ name ba obp slg isop /;
+
   # show all available formula
   print join ' ', $league->formula_list;
 
@@ -70,9 +74,25 @@ Baseball::Sabermetrics is aimed for providing a base class of your interested te
 	Yankees => {
 	    players => {
 		"Chien-Ming Wang" => {
+		    bio => {
+			bats => 'right', # coule be left, switch
+			throws => 'right',
+		    },
 		    ip => 57.33333333333,
 	     	    game => 9,
 		       ...
+		    fielding => {
+			p => {
+			    tc => 43,
+			    pop => 4,
+			    ...
+			},
+			# b1 => { }, b2 => { }, b3 => { },
+			# first, second and thrid baseman should be
+			# b1, b2, and b3 respectively for convenient in
+			# fielding context.  Because the initial of the
+			# name of subroutine can't be a number in perl.
+		    },
 		};
 		...
 	    }
@@ -83,15 +103,46 @@ Baseball::Sabermetrics is aimed for providing a base class of your interested te
     },
  };
 
+=head1 TERMS
+
+Available terms of players (including teams and league, which are accumulated from players and could be treated as an abstract player) are:
+
+    # pitching
+    gs sv bs hld cg sho ip p_pa np h_allowed hr_allowed
+    sh_allowed sf_allowed p_bb p_ibb hb p_so wp bk ra er
+
+    # batting
+    pa ab rbi r h 1b 2b 3b hr tb dp sh sf ibb bb so sb cs
+    tc po a e f_dp ppo tp pb c_cs c_sb
+
+    # fielding
+    pos fgame tc po a e f_dp tp pb c_cs c_sb
+
+And there are additional terms for team:
+
+    game win lose tie
+
+
 =head1 FUNCTIONS
 
 =over 4
 
 =item new([I<%hash>])
 
-Create sabermetric data set of a group of teams.
+Create sabermetric data set of a group of teams.  The following keys are supported:
 
+=over 8
+
+league:
+a string like 'CPBL', which is a module and has to be defined in Baseball::Sabermetrics::League::CPBL.
+
+data:
+If your league is not exists there, you can feed in a structure mentioned above.
+
+Accumulate:
 If $hash{Accumulate} is false, players data will not be accumulated to their teams and the league (and therefore team-wise and league-wise statistics are not allowed).  Default is to accumulate stats.
+
+=back
 
 =cut
 
@@ -136,9 +187,14 @@ sub player_accumulate_term
 {
     # picher and batter's game is the same here, could be a problem later?
     return qw/  gs sv bs hld cg sho ip p_pa np h_allowed hr_allowed
-		sh_allowed sf_allowed p_bb p_ibb hb p_so wp bk r_allowed er
-		pa ab rbi r h 1b 2b 3b hr tb dp sh sf 4ball ibb bb so sb cs
-		finn tc po a e f_dp ppo tp pb c_cs c_sb /;
+		sh_allowed sf_allowed p_bb p_ibb hb p_so wp bk ra er
+		pa ab rbi r h 1b 2b 3b hr tb dp sh sf ibb bb so sb cs
+		tc po a e f_dp ppo tp pb c_cs c_sb /;
+}
+
+sub fielding_accumulate_term
+{
+    return qw/ pos fgame tc po a e f_dp tp pb c_cs c_sb /;
 }
 
 sub team_accumulate_term
@@ -149,19 +205,51 @@ sub team_accumulate_term
 sub setup_common_info
 {
     my $league = shift;
+    $league->{fielding} = Baseball::Sabermetrics::Team->new();
+    for (qw/ p c b1 b2 b3 ss lf cf rf of /) {
+	$league->{fielding}->{$_} = Baseball::Sabermetrics::Player->new();
+    }
+
     for my $tname (keys %{$league->{teams}}) {
 	my $team = $league->{teams}->{$tname};
 	$team->{name} = $tname;
 	unless (exists $league->{_DontAccumulate}) {
-	    no warnings;
+    	    $team->{fielding} = Baseball::Sabermetrics::Team->new();
+	    for (qw/ p c b1 b2 b3 ss lf cf rf of /) {
+		$team->{fielding}->{$_} = Baseball::Sabermetrics::Player->new();
+	    }
+
+	    no warnings; # FIXME
 	    for my $name (keys %{$team->{players}}) {
 		my $p = $team->{players}->{$name};
 		$p->{name} = $name;
 		for (player_accumulate_term()) {
 		    $league->{$_} += $p->{$_};
-		    $p->{team}->{$_} += $p->{$_};
+		    $team->{$_} += $p->{$_};
 		}
 	    }
+	    for my $p (values %{$team->{players}}) {
+		for my $pos (keys %{$p->{fielding}}) {
+		    for (fielding_accumulate_term()) {
+			$team->{fielding}->{$pos}->{$_} += $p->{fielding}->{$pos}->{$_};
+			$league->{fielding}->{$pos}->{$_} += $p->{fielding}->{$pos}->{$_};
+		    }
+
+		    if ($pos eq 'lf' or $pos eq 'cf' or $pos eq 'rf') {
+			for (fielding_accumulate_term()) {
+			    $p->{fielding}->{of}->{$_} += $p->{fielding}->{$pos}->{$_};
+			}
+		    }
+		}
+	    }
+
+	    for my $pos (qw/ lf cf rf /) {
+		for (fielding_accumulate_term()) {
+		    $league->{fielding}->{of}->{$_} += $team->{fielding}->{$pos}->{$_};
+		    $team->{fielding}->{of}->{$_} += $team->{fielding}->{$pos}->{$_};
+		}
+	    }
+
 	    for (team_accumulate_term()) {
 		$league->{$_} += $team->{$_};
 	    }
@@ -174,7 +262,7 @@ sub setup_common_info
 =item players([$name])
 
     for ($league->players) { ... }
-
+    # or specify the name for the player
     print $league->players('Someone')->obp;
 
 =cut
@@ -192,7 +280,7 @@ sub players
 =item teams([$name])
 
     for ($league->teams) { ... }
-
+    # or specify the name for the team
     print $league->teams('Someone')->win;
 
 =cut

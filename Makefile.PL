@@ -8,7 +8,9 @@ all_from        'lib/Baseball/Sabermetrics.pm';
 # Specific dependencies
 #requires        'Carp'              => 0;
 build_requires  'Test::More'        => '0.42';
-recommends      'WWW::Mechanize'    => '0.01';
+recommends      'LWP::UserAgent'    => '2.33',
+                'HTML::TableExtract'=> '2.08',
+		'Data::Serializer'  => '0.29';
 
 no_index        'directory'         => 'examples';
 
