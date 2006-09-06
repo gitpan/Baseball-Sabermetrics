@@ -4,6 +4,7 @@ use lib '/home/victor/cpb2/Sabermetrics/lib';
 use Data::Dumper;
 use Baseball::Sabermetrics;
 
+
 my $league = Baseball::Sabermetrics->new( league => 'CPBL', nocache => 0 );
 
 $league->define(
@@ -14,12 +15,11 @@ att_ws => 'pa > 0 ? $team->team_att_ws * marginal_rc / $team->team_total_margina
 
 pitch_ws => 'np > 0 ? $team->team_pitchers_ws * pitcher_ws_weight / $team->team_pitchers_total_ws_weight : 0',
 
-def_ws => sub {
-    $_->fgame > 0 ? $_->personal_c_ws + $_->personal_b1_ws + $_->personal_b2_ws + $_->personal_b3_ws + $_->personal_ss_ws + $_->personal_of_ws : 0
-},
+def_ws => 'fgame > 0 ? personal_c_ws + personal_b1_ws + personal_b2_ws + personal_b3_ws + personal_ss_ws + personal_of_ws : 0',
 
 # Projected WS
-team_ws => '(win * 3 + tie * 1.5) * 100 / game',
+#team_ws => '(win * 3 + tie * 1.5) * 100 / game',
+team_ws => '(win * 3 + tie * 1.5)',
 
 # ignore field effect factor(?)
 m_save => '$league->r / $league->ip * ip * 1.52 - ra',
@@ -33,7 +33,7 @@ team_def_ws => 'm_save / (m_run + m_save) * team_ws',
 team_att_ws => 'm_run  / (m_run + m_save) * team_ws',
 
 
-der => '(p_pa - h_allowed - p_so - p_bb - p_hb) / (p_pa - hr_allowed - p_so - p_bb - p_hb)',
+der => '(p_pa - h_allowed - p_so - p_bb - hb) / (p_pa - hr_allowed - p_so - p_bb - hb)',
 
 team_pitchers_ws => sub {
     my $cl1 = $_->der_point;
@@ -65,19 +65,18 @@ team_total_marginal_rc => sub {
 run_per_game => 'r / ip * 9',
 
 pitcher_zero_base => sub {
-    # XXX it's strange. check the formula again.
     my $A = $_->league->run_per_game * 1.52 - $_->run_per_game;
-    my $B = $_->A * $_->defense_ws / $_->team_def_ws;
-    $A - $B;
+    my $p = $_->team_fielding_ws / $_->team_def_ws;
+    $_->league->run_per_game * 1.52 - ($_->league->run_per_game * 1.52 - $_->run_per_game) * $p;
 },
 
 team_fielding_ws => 'team_def_ws - team_pitchers_ws',
 
 pitcher_ws_weight => sub {
     my $cl1 = $_->team->pitcher_zero_base * $_->ip - ($_->er + 0.5 * ($_->ra - $_->er));
-    my $cl2 = ($_->win * 3 - $_->lose + $_->save) / 3;
+    my $cl2 = ($_->win * 3 - $_->lose + $_->sv) / 3;
 
-    my $save_eq_ip = $_->save * 3; # 中繼成功省略
+    my $save_eq_ip = $_->sv * 3; # 中繼成功省略
 
     my $A = $_->h_allowed + $_->p_bb + $_->hb;
     my $B = (($_->h_allowed - $_->hr_allowed) * 1.255 + $_->hr_allowed * 4) * 0.89 + ($_->p_bb + $_->hb) * 0.56;
@@ -98,9 +97,9 @@ team_pitchers_total_ws_weight => sub {
     $sum;
 },
 
-c_fielding_weight    => '0.19',    'b1_fielding_weight' => '0.06',
-'b2_fielding_weight' => '0.16',    'b3_fielding_weight' => '0.12',
-ss_fielding_weight   => '0.18',    of_fielding_weight   => '0.29',
+c_fielding_weight    => '0.19',    b1_fielding_weight => '0.06',
+b2_fielding_weight   => '0.16',    b3_fielding_weight => '0.12',
+ss_fielding_weight   => '0.18',    of_fielding_weight => '0.29',
 
 team_total_claim_point =>
 	'team_c_claim_point + team_b1_claim_point + team_b2_claim_point +
@@ -128,9 +127,9 @@ team_ss_ws => 'team_fielding_ws * team_ss_claim_point / team_total_claim_point',
 team_of_ws => 'team_fielding_ws * team_of_claim_point / team_total_claim_point',
 
 c_claim_point => 'po + 2 * a - 8 * e + 6 * f_dp - 4 * pb - 2 * c_sb + 2 * c_cs',
-'b1_claim_point' => 'po + 2 * a - 5 * e',
-'b2_claim_point' => 'po + 2 * a - 5 * e + 2 * rbp("b2") + f_dp',
-'b3_claim_point' => 'po + 2 * a - 5 * e + 2 * rbp("b3")',
+b1_claim_point => 'po + 2 * a - 5 * e',
+b2_claim_point => 'po + 2 * a - 5 * e + 2 * rbp("b2") + f_dp',
+b3_claim_point => 'po + 2 * a - 5 * e + 2 * rbp("b3")',
 ss_claim_point => 'po + 2 * a - 5 * e + 2 * rbp("ss") + f_dp',
 of_claim_point => 'po + 4 * a - 5 * e + 2 * rbp("of")',
 
@@ -390,6 +389,25 @@ sub rounded_personal_fielding_ws {
 #    my $remain_ws = $_->team->
 }
 
+print "step 1 & 2 (projected ws)\n";
+$league->report_teams qw/ name game win tie lose team_ws team_att_ws team_def_ws /;
+
+print "\nstep 3 & 5\n";
+$_->print qw/ name att_ws pitch_ws / for $league->players;
+
+print "\nstep 4\n";
+$league->report_teams qw/ name team_pitchers_ws team_fielding_ws /;
+
+print "\nstep 6\n";
+$league->report_teams qw/ name team_c_ws team_b1_ws team_b2_ws team_b3_ws team_ss_ws team_of_ws /;
+
+print "\nstep 7 & 8\n";
+$_->print qw/ name def_ws personal_c_ws personal_b1_ws personal_b2_ws personal_b3_ws personal_ss_ws personal_of_ws / for $league->players;
+
+print "\n\n\n";
+
+print '-' x 60, "\n";
+
 print "           W  L  T   WS      DEF WS%\n";
 for my $t ($league->teams) {
     printf "%-10s %d %d %d   %.2f  %.2f%%\n", $t->name, $t->win, $t->lose, $t->tie, $t->team_ws, $t->team_def_ws / $t->team_ws * 100;
@@ -400,14 +418,12 @@ print "\n";
 
 #warn "## ".$league->teams('cobras')->team_total_ss_claim_point, $/;
 
-print "top 20 ws\n\n";
-print "NAME\tWS\tBAT\tPITCH\tFIELD\n";
-$_->print qw/ name ws att_ws pitch_ws def_ws/ for $league->top('players', 20, 'ws');
+print "TEAM\tmRunScored\tmRunCreated 投手零價值標準\n";
+$_->print qw/ name m_save m_run pitcher_zero_base / for $league->teams;
 print "\n";
 
-print "bottom 20 ws\n\n";
-print "NAME\tWS\tBAT\tPITCH\tFIELD\n";
-$_->print qw/ name ws att_ws pitch_ws def_ws/ for $league->bottom('players', 20, 'ws');
+print "TEAM\tNAME\tBAT\tPITCH\tFIELD\tTOTAL\t投手ws比重\n";
+$_->print qw/ team name att_ws pitch_ws def_ws ws pitcher_ws_weight / for $league->pitchers;
 print "\n";
 
 

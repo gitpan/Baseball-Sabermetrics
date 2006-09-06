@@ -12,7 +12,7 @@ Baseball::Sabermetrics - A Baseball Statistics Module
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 SYNOPSIS
 
@@ -62,6 +62,8 @@ Baseball::Sabermetrics provides an easy interface for calculating baseball stati
   $league->{Yankees}->report_pitchers qw/ name ip p_so p_bb whip go_ab /;
   $league->{Yankees}->report_batters  qw/ name ba obp slg isop /;
 
+  $league->report_teams qw/ name win lose era obp /;
+
   # show all available formula
   print join ' ', $league->formula_list;
 
@@ -108,11 +110,11 @@ Baseball::Sabermetrics is aimed for providing a base class of your interested te
 Available terms of players (including teams and league, which are accumulated from players and could be treated as an abstract player) are:
 
     # pitching
-    gs sv bs hld cg sho ip p_pa np h_allowed hr_allowed
-    sh_allowed sf_allowed p_bb p_ibb hb p_so wp bk ra er
+    p_game win lose tie gs sv bs hld cg sho ip p_pa np h_allowed
+    hr_allowed sh_allowed sf_allowed p_bb p_ibb hb p_so wp bk ra er
 
     # batting
-    pa ab rbi r h 1b 2b 3b hr tb dp sh sf ibb bb so sb cs
+    pa ab rbi r h 1b 2b 3b hr tb dp sh sf ibb bb hbp so sb cs
     tc po a e f_dp ppo tp pb c_cs c_sb
 
     # fielding
@@ -186,9 +188,9 @@ sub new
 sub player_accumulate_term
 {
     # picher and batter's game is the same here, could be a problem later?
-    return qw/  gs sv bs hld cg sho ip p_pa np h_allowed hr_allowed
-		sh_allowed sf_allowed p_bb p_ibb hb p_so wp bk ra er
-		pa ab rbi r h 1b 2b 3b hr tb dp sh sf ibb bb so sb cs
+    return qw/  p_game win lose tie gs sv bs hld cg sho ip p_pa np h_allowed
+		hr_allowed sh_allowed sf_allowed p_bb p_ibb hb p_so wp bk ra er
+		pa ab rbi r h 1b 2b 3b hr tb dp sh sf ibb bb hbp so sb cs
 		tc po a e f_dp ppo tp pb c_cs c_sb /;
 }
 
@@ -293,6 +295,15 @@ sub teams
 	return $self->{teams}->{$name};
     }
     return values %{$self->{teams}};
+}
+
+sub report_teams
+{
+    my ($self, @cols) = @_;
+    print join("\t", @cols), "\n";
+    for ($self->teams) {
+	$_->print(@cols);
+    }
 }
 
 =item pitchers

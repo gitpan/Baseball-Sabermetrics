@@ -16,7 +16,7 @@ sub new
     if (-f CACHEFILE && !$config{nocache}) {
 	my $mtime = (stat CACHEFILE)[9];
 	# just a heuristic for speeding up
-	if (time - $mtime < 6 * 3600) {
+	if ($config{usecache} || time - $mtime < 6 * 3600) {
 	    print STDERR "cache hit\n";
 	    return $data->retrieve(CACHEFILE);
 	}
@@ -43,7 +43,7 @@ sub new
 	extract_record(
 		$team,
 		"http://www.cpbl.com.tw/teams/Team_Pitcher.aspx?Tno=$code",
-		[qw/ name game gs _ _ win lose tie sv bs hld _ cg sho /]);
+		[qw/ name p_game gs _ _ win lose tie sv bs hld _ cg sho /]);
 	extract_record(
 		$team,
 		"http://www.cpbl.com.tw/teams/Team_Pitcher.aspx?Tno=$code&page=2",
@@ -100,12 +100,21 @@ sub get_table_in_html
 {
     my ($page, $attribs) = @_;
 
+    my $t;
+    if (exists $attribs->{cpb2_choose_table}) {
+	$t = $attribs->{cpb2_choose_table};
+	delete $attribs->{cpb2_choose_table};
+    }
+    else {
+	$t = 0;
+    }
+
     my $te = HTML::TableExtract->new(attribs => $attribs);
     $te->parse($page =~ /^http/ ? get_content($page) : $page);
 
     my @tables = $te->tables;
     die "No table is found" unless @tables;
-    return shift @tables;
+    return $tables[$t];
 }
 
 sub extract_table_record
@@ -141,7 +150,7 @@ sub extract_score
 {
     my ($league, $url) = @_;
     my $hash = {};
-    extract_table_record($url, { class => 'Report_Table_score' }, $hash, 2,
+    extract_table_record($url, { class => 'Report_Table_score', cpb2_choose_table => 2 }, $hash, 2,
 	    [qw/ company game score /]);
     for my $key (keys %$hash) {
 	my $name = $key;
@@ -149,7 +158,7 @@ sub extract_score
 	my $team = $hash->{$key};
 	my ($t) = grep { $_->{company} eq $name } values %{$league->{teams}};
 	$t->{game} = $team->{game};
-	($t->{win}, $t->{lose}, $t->{tie}) = ($team->{score} =~ /(\d+)勝(\d+)和(\d+)敗/);
+	($t->{win}, $t->{tie}, $t->{lose}) = ($team->{score} =~ /(\d+)勝(\d+)和(\d+)敗/);
     }
 }
 
